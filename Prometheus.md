@@ -1,6 +1,16 @@
-# 下載 https://prometheus.io/download/#prometheus
+---
+title: 安裝Prometheus
+tags: tutorials
+disqus: hackmd
+---
 
+# 下載 https://prometheus.io/download/#prometheus
+```
+wget https://
+tar xvfz filename
+```
 # 新增user
+```
 groupadd prometheus
 useradd -g prometheus -M -s /bin/false prometheus
 
@@ -12,9 +22,11 @@ sudo chown prometheus:prometheus /usr/local/bin/promtool
 
 sudo chown -R prometheus:prometheus /etc/prometheus/consoles
 sudo chown -R prometheus:prometheus /etc/prometheus/console_libraries
+```
 
 
 # 設定systemd
+```
 sudo vi /etc/systemd/system/prometheus.service
 
 [Unit]
@@ -36,10 +48,12 @@ ExecStart=/usr/local/bin/prometheus \
     --web.enable-lifecycle  #熱重啟curl -X POST localhost:9090/-/reload
 [Install]
 WantedBy=multi-user.target
+```
 
 
 
 # vim prometheus.yml檔案
+```
 #my global config
 global:
   scrape_interval:     15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.
@@ -85,3 +99,73 @@ scrape_configs:
 systemctl daemon-reload
 systemctl enable prometheus.service
 systemctl start prometheus.service
+```
+
+# 安裝Alertmanager
+
+```
+wget https://
+tar xvfz filename
+```
+# vim alertmanager.yml 檔案
+```
+global:
+  resolve_timeout: 15s
+route:
+  group_by: ['instance', 'alertname']
+  group_wait: 5s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'sam-test'
+receivers:
+- name: 'sam-test'
+  webhook_configs:
+  - url: 'http://localhost:2000/sam-test'
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']
+```
+# 啟動systemd
+```
+[Unit]
+Description=Alertmanager
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=alertmanager
+Group=alertmanager
+Type=simple
+WorkingDirectory=/etc/alertmanager/
+ExecStart=/etc/alertmanager/alertmanager \
+  --config.file=/etc/alertmanager/alertmanager.yml
+
+
+[Install]
+WantedBy=multi-user.target
+```
+# 安裝Prometheus-msteams
+下載binary檔案與default-message-card.tmpl -
+https://github.com/prometheus-msteams/prometheus-msteams#getting-started-quickstart
+
+# 啟動systemd
+```
+[Unit]
+Description=msteams
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/etc/prometheus/prometheus-msteams/prometheus-msteams-linux-amd64 -config-file /etc/prometheus/prometheus-msteams/config.yml \
+        -template-file /etc/prometheus/prometheus-msteams/default-message-card.tmpl
+
+[Install]
+WantedBy=multi-user.target
+```
